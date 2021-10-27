@@ -1,0 +1,51 @@
+﻿@using WebMatrix.Data
+
+@{
+    ViewBag.Title = "Lot";  // you can modify this to include the dynamic lot no.
+                            // This page should show the selected lot item
+                            // DB Stuff here to show selected item in detail
+    var db = Database.Open("AuctionDB");
+    var catalogueID = Request.QueryString["catalogueID"];
+    var lotNo = Request.QueryString["lotNo"];
+    var status = Request.QueryString["status"];
+    var database = db.Query("SELECT * FROM Lots " +
+        "INNER JOIN LotImages ON (Lots.lotNo=LotImages.lotNo AND Lots.catalogueID=LotImages.catalogueID) " +
+        "INNER JOIN Catalogues ON Catalogues.catalogueID=Lots.catalogueID " +
+        "INNER JOIN Auctions ON Auctions.auctionID=Catalogues.auctionID " +
+        "INNER JOIN AuctionTypes ON AuctionTypes.auctionTypeID=Auctions.auctionTypeID " +
+        "WHERE Lots.lotNo = @0 AND Lots.catalogueID = @1", lotNo, catalogueID).ToArray();
+}
+
+<div class="jumbotron py-1 mt-2">
+    <h2 class="text-center">Lot</h2>
+</div>
+
+<div class="container">
+    <div class="row">
+        @{
+            <div class="card col-12">
+                <div class="card-body">
+                    <h5 class="card-title">@database[0].lotTitle</h5>
+                    <p class="card-text">Type Of Auction: @database[0].typeName</p>
+                    <p class="card-text">Auction Time: @database[0].auctDateTime</p>
+                    <p class="card-text">Lot Number: @database[0].lotNo</p>
+                    <p class="card-text">Catalogue: @database[0].catName</p>
+                    <p class="card-text">Description: <br />@database[0].lotDescription</p>
+                    <p class="card-text">Price range: @database[0].minPrice - @database[0].maxPrice</p>
+                    <p class="card-text">Status: @status</p>
+                    <p class="card-text">Image: </p>
+                </div>
+                <img src="@database[0].imageUrl" class="card-img-bottom" alt="@database[0].lotDescription" />
+                @{
+                    if (database.Length > 1)
+                    {
+                        for (var i = 1; i < database.Length; i++)
+                        {
+                            <img src="@database[i].imageUrl" class="card-img-bottom" alt="@database[i].lotDescription">
+                        }
+                    }
+                }
+            </div>
+        }
+    </div>
+</div>

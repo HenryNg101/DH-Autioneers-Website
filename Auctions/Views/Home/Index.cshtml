@@ -1,0 +1,149 @@
+﻿@using WebMatrix.Data
+
+@{
+    ViewBag.Title = "Home";
+    // This is the starting page that should show a list of past + current auction catalogues
+    // selecting a catalogue should navigate to the catalogue page
+    // DB Stuff here to show list of Auction Catalogues
+    var db = Database.Open("AuctionDB");
+    var database = db.Query("SELECT * FROM Catalogues " +
+        "INNER JOIN Auctions ON Catalogues.auctionID=Auctions.auctionID " +
+        "INNER JOIN AuctionTypes ON AuctionTypes.auctiontypeID=Auctions.auctionTypeID " +
+        "WHERE AuctionTypes.typeName LIKE CONCAT('%' , @0, '%') " +
+        "ORDER BY Auctions.auctDateTime, Catalogues.catName DESC", Request.Form["catalogue"]).ToArray();
+    var auction_type = db.Query("SELECT * FROM AuctionTypes");
+    var auction = db.Query("SELECT * FROM Auctions ");
+    var current_date = Request.Form["auction_date"];
+    var current_auctions = database;
+    var past_auctions = database;
+    if (current_date != "all_dates")
+    {
+        current_auctions = db.Query("SELECT * FROM Catalogues " +
+        "INNER JOIN Auctions ON Catalogues.auctionID=Auctions.auctionID " +
+        "INNER JOIN AuctionTypes ON AuctionTypes.auctiontypeID=Auctions.auctionTypeID " +
+        "WHERE Auctions.auctDateTime >= @0 AND AuctionTypes.typeName LIKE CONCAT('%' , @1, '%') " +
+        "ORDER BY Auctions.auctDateTime, Catalogues.catName DESC", current_date, Request.Form["catalogue"]).ToArray();
+
+        past_auctions = db.Query("SELECT * FROM Catalogues " +
+        "INNER JOIN Auctions ON Catalogues.auctionID=Auctions.auctionID " +
+        "INNER JOIN AuctionTypes ON AuctionTypes.auctiontypeID=Auctions.auctionTypeID " +
+        "WHERE Auctions.auctDateTime < @0 AND AuctionTypes.typeName LIKE CONCAT('%' , @1, '%') " +
+        "ORDER BY Auctions.auctDateTime, Catalogues.catName DESC", current_date, Request.Form["catalogue"]).ToArray();
+    }
+    var lots = db.Query("SELECT * FROM Lots");
+}
+
+<div class="jumbotron py-1 mt-2">
+    <h2 class="text-center">Catalogues</h2>
+</div>
+
+<div class="container">
+    <form method="post" class="row" action="/Home/Index">
+        <div class="col-2">
+            <select name="catalogue" id="all_catalogues">
+                <option value="">All Catalogues</option>
+                @{
+                    foreach (var option in auction_type)
+                    {
+                        <option value="@option.typeName">@option.typeName</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-2">
+            <select name="auction_date" id="auction_dates">
+                <option value="all_dates">Auction Date</option>
+                @{
+                    foreach (var option in auction)
+                    {
+                        <option value="@option.auctDateTime">@option.auctDateTime</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-3">
+            <input type="submit" value="Search">
+        </div>
+    </form>
+</div>
+
+<div class="jumbotron p-0 m-0">
+    <h5 class="text-center bg-success">Current and Future Auctions</h5>
+</div>
+
+<div class="container">
+    <div class="row">
+        @{
+            foreach (var catalogue in current_auctions)
+            {
+                {
+                    <div class="card">
+                        <div class="card-body row">
+                            <div class="card-title col-4">@catalogue.catName</div>
+                            @{
+                                var count = 0;
+                                foreach (var lot in lots)
+                                {
+                                    if (catalogue.catalogueID == lot.catalogueID)
+                                    {
+                                        count += 1;
+                                    }
+                                }
+                                <div class="col-5">@count Lots</div>
+                            }
+                            <div class="card-text col-3">@catalogue.auctDateTime</div>
+                        </div>
+                        <img class="card-img-bottom" src="@catalogue.catPhotoUrl" alt="@catalogue.catDesc" />
+                        <div class="card-body">
+                            <a href="/Home/Catalogue?id=@catalogue.catalogueID" class="btn btn-primary">Go to see this catalogue</a>
+                        </div>
+                    </div>
+                }
+            }
+        }
+    </div>
+</div>
+
+<div class="jumbotron p-0 m-0">
+    <h5 class="text-center bg-danger">Past Auctions</h5>
+</div>
+
+<div class="container">
+    <div class="row">
+        @{
+            if (current_date != "all_dates")
+            {
+                foreach (var catalogue in past_auctions)
+                {
+                    {
+                        <div class="card">
+                            <div class="card-body row">
+                                <div class="card-title col-4">@catalogue.catName</div>
+                                @{
+                                    var count = 0;
+                                    foreach (var lot in lots)
+                                    {
+                                        if (catalogue.catalogueID == lot.catalogueID)
+                                        {
+                                            count += 1;
+                                        }
+                                    }
+                                    <div class="col-5">@count Lots</div>
+                                }
+                                <div class="card-text col-3">@catalogue.auctDateTime</div>
+                            </div>
+                            <img class="card-img-bottom" src="@catalogue.catPhotoUrl" alt="@catalogue.catDesc" />
+                            <div class="card-body">
+                                <a href="/Home/Catalogue?id=@catalogue.catalogueID" class="btn btn-primary">Go to see this catalogue</a>
+                            </div>
+                        </div>
+                    }
+                }
+            }
+            else
+            {
+                <h3 class="text-lg-right">No past auctions</h3>
+            }
+        }
+    </div>
+</div>

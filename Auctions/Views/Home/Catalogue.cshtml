@@ -1,0 +1,115 @@
+﻿@using WebMatrix.Data
+
+@{
+    ViewBag.Title = "Catalogue"; // you can modify this to include the dynamic catalogue no.
+                                 // This page should list all the lots for a selected auction catalogue
+                                 // selecting a catalogue lot item should navigate to the Lot page
+                                 // DB Stuff here to show list of lots in selected auction catalogue
+    var db = Database.Open("AuctionDB");
+    var catalogue = Request.QueryString["id"];
+    var database = db.Query("SELECT * FROM Lots " +
+        "INNER JOIN Catalogues ON Catalogues.catalogueID=Lots.catalogueID " +
+        "INNER JOIN LotImages ON (Lots.lotNo=LotImages.lotNo AND Lots.catalogueID=LotImages.catalogueID) " +
+        "INNER JOIN Auctions ON (Auctions.auctionID=Catalogues.auctionID)" +
+        "INNER JOIN AuctionTypes ON (Auctions.auctionTypeID=AuctionTypes.auctionTypeID) " +
+        "WHERE Lots.lotTitle LIKE CONCAT('%' ,@0, '%') " +
+        "ORDER BY Lots.lotNo ASC", Request.Form["lot_title"]).ToArray();
+}
+
+<div class="container">
+    <form method="post" class="row" action="/Home/Catalogue?id=@catalogue">
+        <div class="col-3">
+            <input type="text" size="30" id="lot_title" name="lot_title" placeholder="Lot title/description search..." class="form-control" value="" />
+        </div>
+        <div class="col-2">
+            <button type="submit">Submit</button>
+        </div>
+    </form>
+</div>
+
+<div class="jumbotron py-1 mt-2 bg-success">
+    @{
+        var index = 0;
+        while ((Convert.ToString(database[index].catalogueID) != catalogue) && (index < database.Length - 1))
+        {
+            index++;
+        }
+        <h3 class="text-left">@database[index].catName </h3>
+        <h3 class="text-right">Auction Date @database[index].auctDateTime </h3>
+    }
+</div>
+
+<div class="container">
+    @{
+        int save = 0;
+        for (int i = 0; i < database.Length; i++)
+        {
+            if (Convert.ToString(database[i].catalogueID) == catalogue)
+            {
+                if (save != 0)
+                {
+                    <div class="card">
+                        @{ if (save != database[i].lotNo)
+                            {
+                                <div class="card-body row">
+                                    <div class="card-title col-4">Lot @database[i].lotNo</div>
+                                    <div class="card-title col-4">@database[i].lotTitle</div>
+                                    <div class="card-text col-4">Range $@database[i].minPrice - @database[i].maxPrice</div>
+                                </div>
+                            }
+                        }
+                        @{
+                            var status = "";
+                            if (database[i].salePrice != null)
+                            {
+                                if (database[i].salePrice >= database[i].minPrice)
+                                {
+                                    status = "Sold - " + database[i].salePrice;
+                                }
+                                else
+                                {
+                                    status = "Passed In";
+                                }
+                            }
+                            <div class="card-body row">
+                                <a href="~/Home/Lot?lotNo=@database[i].lotNo&catalogueID=@database[i].catalogueID&status=@status" class="card-img-bottom col-6"><img class="card-img-bottom col-12" src="@database[i].imageUrl" alt="@database[i].lotDescription" /></a>
+                                <p class=" text-right card-body col-6">@status</p>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="card">
+                        <div class="card-body row">
+                            <div class="card-title col-4">Lot @database[i].lotNo</div>
+                            <div class="card-title col-4">@database[i].lotTitle</div>
+                            <div class="card-text col-4">Range $@database[i].minPrice - @database[i].maxPrice</div>
+                        </div>
+                        @{
+                            var status = "";
+                            if (database[i].salePrice != null)
+                            {
+                                if (database[i].salePrice >= database[i].minPrice)
+                                {
+                                    status = "Sold - " + database[i].salePrice;
+                                }
+                                else
+                                {
+                                    status = "Passed In";
+                                }
+                            }
+                            <div class="card-body row">
+                                <a href="~/Home/Lot?lotNo=@database[i].lotNo&catalogueID=@database[i].catalogueID&status=@status" class="card-img-bottom col-6"><img class="card-img-bottom col-12" src="@database[i].imageUrl" alt="@database[i].lotDescription" /></a>
+                                <p class=" text-right card-body col-6">@status</p>
+                            </div>
+                        }
+                    </div>
+                }
+                save = database[i].lotNo;
+            }
+        }
+        <br />
+        <a href="/Home/Index" class="btn btn-primary">Go back to the catalogue page</a>
+    }
+</div>
